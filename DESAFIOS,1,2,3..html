@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mundo Computacion - Escuela Parroquial Jesus Horizonte y Camino</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #7e22ce, #2563eb, #0891b2);
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-8px) scale(1.03);
+        }
+
+        .key-btn {
+            box-shadow: 0 6px 0 #94a3b8;
+            transition: all 0.1s ease;
+        }
+        .key-btn:active, .key-pressed {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #94a3b8;
+            background-color: #fef08a !important;
+            color: #854d0e !important;
+        }
+
+        .pop-effect {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* Drag and Drop styling */
+        .draggable-piece {
+            cursor: grab;
+            touch-action: none;
+        }
+        .draggable-piece:active {
+            cursor: grabbing;
+        }
+        .drag-over {
+            border-color: #eab308 !important;
+            background-color: #fef9c3 !important;
+            transform: scale(1.05);
+        }
+
+        /* Target floating items in catching game */
+        @keyframes floatUpDown {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+        .floating-target {
+            animation: floatUpDown 2s ease-in-out infinite;
+        }
+
+        /* Memory card flip */
+        .memory-card {
+            perspective: 1000px;
+        }
+        .memory-card-inner {
+            transition: transform 0.5s;
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-card-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-card-front, .memory-card-back {
+            backface-visibility: hidden;
+        }
+        .memory-card-back {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- ENCABEZADO INSTITUCIONAL -->
+    <header class="bg-white/95 backdrop-blur shadow-xl border-b-8 border-yellow-400 p-3 sm:p-4 text-center relative z-10">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="showMainMenu()">
+                <div class="bg-yellow-400 p-3 rounded-2xl shadow-lg transform -rotate-3 hover:rotate-0 transition flex items-center justify-center">
+                    <span class="text-4xl">🖥️</span>
+                </div>
+                <div class="text-left">
+                    <h1 class="text-lg sm:text-2xl font-black text-purple-800 tracking-wide uppercase leading-tight">
+                        Escuela Parroquial <br class="hidden sm:block"/>
+                        <span class="text-pink-600">Jesús, Horizonte y Camino</span>
+                    </h1>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <span class="inline-block bg-blue-100 text-blue-800 font-bold px-3 py-0.5 rounded-full text-xs sm:text-sm border border-blue-300">
+                            💻 Computación Infantil
+                        </span>
+                        <span class="inline-block bg-purple-100 text-purple-800 font-bold px-3 py-0.5 rounded-full text-xs sm:text-sm border border-purple-300">
+                            👩‍🏫 Profesora Esthefany Medina
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MARCADOR DE ESTRELLAS Y AUDIO -->
+            <div class="flex items-center gap-3">
+                <button onclick="toggleAudioHint()" id="btn-audio-toggle" class="bg-pink-500 hover:bg-pink-600 text-white font-bold px-3 py-2 rounded-2xl shadow transition flex items-center gap-1 text-sm">
+                    <span id="audio-icon" class="text-xl">🔊</span> <span class="hidden sm:inline">Voz Activa</span>
+                </button>
+                <div class="bg-gradient-to-r from-yellow-300 to-amber-400 px-4 py-2 rounded-full shadow-lg border-2 border-white flex items-center gap-2">
+                    <span class="text-3xl">⭐</span>
+                    <span class="text-xl sm:text-2xl font-black text-amber-950" id="total-stars">0</span>
+                </div>
+                <button onclick="showMainMenu()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold p-3 rounded-2xl shadow transition" title="Menú Principal">
+                    <span class="text-2xl">🏠</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-3 sm:p-4 flex flex-col justify-center">
+
+        <!-- MENÚ PRINCIPAL VISUAL CON ICONOS Y DIBUJOS GRANDES -->
+        <div id="main-menu" class="space-y-6 my-auto py-4">
+            <div class="text-center text-white space-y-2 drop-shadow-md">
+                <h2 class="text-3xl sm:text-5xl font-black tracking-wider text-yellow-300">¡A Jugar y Aprender! 🎮✨</h2>
+                <p class="text-base sm:text-xl font-bold text-blue-100">Toca tu juego favorito para comenzar:</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+                
+                <!-- 1. Caza Objetos por Tiempo (Ratón) -->
+                <div onclick="startMouseGame()" class="card-hover bg-gradient-to-b from-teal-400 to-emerald-600 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28 relative">
+                            <span class="text-6xl animate-bounce">🖱️🎈</span>
+                            <span class="absolute top-2 right-2 bg-yellow-400 text-amber-950 text-xs font-black px-2 py-1 rounded-full">⏱️ 1 MINUTO</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">1. Atrapa en 1 Minuto ⏱️</h3>
+                        <p class="text-sm font-bold text-emerald-100">¡Usa el ratón para hacer clic en los globos antes que acabe el tiempo!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡JUGAR!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 2. Arrastra y Arma la Computadora (Drag & Drop) -->
+                <div onclick="startDragAssemblyGame()" class="card-hover bg-gradient-to-b from-amber-400 to-orange-600 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">🧩🖥️</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">2. Arrastra y Arma 🧩</h3>
+                        <p class="text-sm font-bold text-amber-100">¡Toma las piezas con el ratón y arrástralas a su sitio!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡ARRASTRAR!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 3. Mecanografía por Tiempo -->
+                <div onclick="startSpeedTypingGame()" class="card-hover bg-gradient-to-b from-blue-400 to-indigo-600 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28 relative">
+                            <span class="text-6xl animate-pulse">⌨️🚀</span>
+                            <span class="absolute top-2 right-2 bg-yellow-400 text-amber-950 text-xs font-black px-2 py-1 rounded-full">⏱️ 60 SEG</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">3. Carrera de Teclas 🚀</h3>
+                        <p class="text-sm font-bold text-blue-100">Mecanografía rápida: ¡Presiona las letras antes que caigan!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡TECLEAR!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 4. Pinta tu Computadora (Creativo) -->
+                <div onclick="startColoringGame()" class="card-hover bg-gradient-to-b from-pink-400 to-rose-600 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">🎨🤖</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">4. Estación para Colorear 🎨</h3>
+                        <p class="text-sm font-bold text-rose-100">¡Pinta PCs, Laptops y Robots tecnológicos!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡PINTAR!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 5. Memoria de Accesorios -->
+                <div onclick="startMemoryGame()" class="card-hover bg-gradient-to-b from-purple-400 to-indigo-700 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">🃏🎧</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">5. Memoria Mágica 🃏</h3>
+                        <p class="text-sm font-bold text-purple-100">Encuentra las parejas de accesorios y partes.</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡JUGAR MEMORIA!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 6. Trivia con Dibujos -->
+                <div onclick="startTriviaGame()" class="card-hover bg-gradient-to-b from-emerald-400 to-teal-700 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">❓💡</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">6. Desafío Visual 🔍</h3>
+                        <p class="text-sm font-bold text-teal-100">Escucha las adivinanzas y toca el dibujo correcto.</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡RESPONDER!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 7. Mecanografía Texto Largo -->
+                <div onclick="startLongTypingGame()" class="card-hover bg-gradient-to-b from-cyan-500 to-blue-700 sm:col-span-2 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">📜⌨️</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">7. Práctica de Texto Largo 📜</h3>
+                        <p class="text-sm font-bold text-blue-100">¡Escribe oraciones completas como un profesional del teclado!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡ESCRIBIR TEXTO!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+                <!-- 8. NUEVA SECCIÓN: Sopa de Letras Computacional -->
+                <div onclick="startWordSearchGame()" class="card-hover bg-gradient-to-b from-fuchsia-500 to-pink-700 sm:col-span-1 rounded-3xl p-5 text-white text-center shadow-2xl border-4 border-white cursor-pointer flex flex-col justify-between relative overflow-hidden group">
+                    <div>
+                        <div class="bg-white/20 rounded-2xl p-4 mb-3 flex justify-center items-center h-28">
+                            <span class="text-6xl">🔤🔍</span>
+                        </div>
+                        <h3 class="text-2xl font-black mb-1 text-yellow-300">8. Sopa de Letras 🔤</h3>
+                        <p class="text-sm font-bold text-fuchsia-100">¡Encuentra las palabras ocultas de la computadora!</p>
+                    </div>
+                    <button class="mt-4 bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black py-3 px-4 rounded-2xl shadow-lg text-lg flex items-center justify-center gap-2">
+                        <span>¡BUSCAR PALABRAS!</span> <span class="text-2xl">👉</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 1. JUEGO DEL RATÓN POR TIEMPO -->
+        <div id="game-mouse" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-teal-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-teal-900 font-black text-lg sm:text-xl block">🖱️ ATRAPA EN 1 MINUTO</span>
+                    <span class="text-sm text-teal-700 font-bold">⏱️ Tiempo restante: <span id="mouse-timer" class="text-red-600 font-black text-xl">60</span>s</span>
+                </div>
+                <div class="bg-teal-100 px-4 py-2 rounded-xl text-teal-900 font-black text-base border-2 border-teal-300">
+                    Atrapados: <span id="mouse-score" class="font-black text-teal-700 text-2xl">0</span>
+                </div>
+            </div>
+
+            <div id="mouse-stage" class="relative w-full h-[400px] bg-emerald-900/10 rounded-3xl border-4 border-dashed border-teal-400 overflow-hidden bg-gradient-to-br from-teal-50 to-emerald-100 shadow-inner">
+            </div>
+        </div>
+
+        <!-- 2. JUEGO ARRASTRAR Y ARMAR -->
+        <div id="game-drag-assembly" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-amber-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-amber-900 font-black text-lg sm:text-xl block">🧩 ARRASTRA Y ARMA LA COMPUTADORA</span>
+                    <span class="text-sm text-amber-700 font-bold">¡Lleva cada pieza a su casilla correspondiente!</span>
+                </div>
+                <div class="bg-amber-100 px-4 py-2 rounded-xl text-amber-900 font-black text-base border-2 border-amber-300">
+                    Armadas: <span id="drag-score" class="font-black text-amber-700 text-2xl">0</span>/4
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/90 p-6 rounded-3xl shadow-2xl border-4 border-amber-300">
+                <div class="space-y-3">
+                    <h3 class="font-black text-amber-900 text-center text-lg uppercase bg-amber-100 p-2 rounded-xl">Piezas disponibles:</h3>
+                    <div id="drag-pieces-container" class="grid grid-cols-2 gap-3 min-h-[180px] p-2 bg-amber-50 rounded-2xl border-2 border-amber-200">
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-black text-indigo-900 text-center text-lg uppercase bg-indigo-100 p-2 rounded-xl">Lugares donde van:</h3>
+                    <div id="drag-targets-container" class="grid grid-cols-2 gap-3 min-h-[180px] p-2 bg-indigo-50 rounded-2xl border-2 border-indigo-200">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CARRERA DE MECANOGRAFÍA POR TIEMPO (TECLAS Y PALABRAS CORTAS) -->
+        <div id="game-speed-typing" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-blue-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-blue-900 font-black text-lg sm:text-xl block">⌨️ CARRERA DE TECLAS</span>
+                    <span class="text-sm text-blue-700 font-bold">⏱️ Tiempo restante: <span id="typing-timer" class="text-red-600 font-black text-xl">60</span>s</span>
+                </div>
+                <div class="bg-blue-100 px-4 py-2 rounded-xl text-blue-900 font-black text-base border-2 border-blue-300">
+                    Puntos: <span id="typing-score" class="font-black text-blue-700 text-2xl">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white/95 rounded-3xl p-6 shadow-2xl border-4 border-blue-300 max-w-2xl mx-auto text-center space-y-6">
+                <div class="bg-gradient-to-r from-blue-100 to-indigo-100 p-6 rounded-3xl border-4 border-blue-200">
+                    <p class="text-gray-600 font-bold text-sm uppercase mb-2">Presiona esta tecla en tu teclado:</p>
+                    <div class="flex items-center justify-center gap-4">
+                        <span id="typing-icon" class="text-6xl sm:text-7xl">🥑</span>
+                        <span id="typing-target" class="text-7xl sm:text-8xl font-black text-indigo-800 bg-white px-8 py-3 rounded-3xl border-4 border-indigo-400 shadow-lg">A</span>
+                    </div>
+                </div>
+
+                <!-- Teclado en pantalla interactivo para soporte táctil -->
+                <div class="space-y-2">
+                    <p class="text-xs font-bold text-gray-500">También puedes tocar las teclas aquí:</p>
+                    <div class="grid grid-cols-6 gap-2 max-w-md mx-auto">
+                        <button id="tp-key-A" onclick="pressTypingKey('A')" class="key-btn bg-blue-500 text-white font-black py-3 rounded-xl text-xl">A</button>
+                        <button id="tp-key-1" onclick="pressTypingKey('1')" class="key-btn bg-purple-500 text-white font-black py-3 rounded-xl text-xl">1</button>
+                        <button id="tp-key-C" onclick="pressTypingKey('C')" class="key-btn bg-pink-500 text-white font-black py-3 rounded-xl text-xl">C</button>
+                        <button id="tp-key-E" onclick="pressTypingKey('E')" class="key-btn bg-emerald-500 text-white font-black py-3 rounded-xl text-xl">E</button>
+                        <button id="tp-key-5" onclick="pressTypingKey('5')" class="key-btn bg-amber-500 text-white font-black py-3 rounded-xl text-xl">5</button>
+                        <button id="tp-key-M" onclick="pressTypingKey('M')" class="key-btn bg-teal-500 text-white font-black py-3 rounded-xl text-xl">M</button>
+                        <button id="tp-key-P" onclick="pressTypingKey('P')" class="key-btn bg-rose-500 text-white font-black py-3 rounded-xl text-xl">P</button>
+                        <button id="tp-key-3" onclick="pressTypingKey('3')" class="key-btn bg-indigo-500 text-white font-black py-3 rounded-xl text-xl">3</button>
+                        <button id="tp-key-O" onclick="pressTypingKey('O')" class="key-btn bg-orange-500 text-white font-black py-3 rounded-xl text-xl">O</button>
+                        <button id="tp-key-U" onclick="pressTypingKey('U')" class="key-btn bg-violet-500 text-white font-black py-3 rounded-xl text-xl">U</button>
+                        <button id="tp-key-R" onclick="pressTypingKey('R')" class="key-btn bg-cyan-500 text-white font-black py-3 rounded-xl text-xl">R</button>
+                        <button id="tp-key-S" onclick="pressTypingKey('S')" class="key-btn bg-yellow-500 text-white font-black py-3 rounded-xl text-xl">S</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. JUEGO COLOREAR COMPUTADORA -->
+        <div id="game-coloring" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-pink-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-pink-900 font-black text-lg sm:text-xl block">🎨 ESTACIÓN PARA COLOREAR</span>
+                    <span class="text-sm text-pink-700 font-bold">¡Elige un color y toca la parte del dibujo para pintarla!</span>
+                </div>
+                <button onclick="finishColoring()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-4 py-2 rounded-xl text-base shadow">
+                    ⭐ ¡Listo!
+                </button>
+            </div>
+
+            <div class="bg-white/95 rounded-3xl p-4 sm:p-6 shadow-2xl border-4 border-pink-300 max-w-4xl mx-auto space-y-4">
+                <!-- Selectores de dibujo -->
+                <div class="flex justify-center gap-2 bg-pink-100 p-2 rounded-2xl border-2 border-pink-300">
+                    <button id="btn-draw-pc" onclick="switchColoringImage('pc')" class="bg-pink-500 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1">
+                        <span>🖥️ Computadora</span>
+                    </button>
+                    <button id="btn-draw-laptop" onclick="switchColoringImage('laptop')" class="bg-white text-pink-900 font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1">
+                        <span>💻 Laptop</span>
+                    </button>
+                    <button id="btn-draw-robot" onclick="switchColoringImage('robot')" class="bg-white text-pink-900 font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1">
+                        <span>🤖 Robot</span>
+                    </button>
+                </div>
+
+                <!-- Paleta de colores -->
+                <div class="flex flex-wrap justify-center gap-2 p-3 bg-gray-100 rounded-2xl border-2 border-gray-300">
+                    <button onclick="selectColor('#ef4444')" class="w-9 h-9 rounded-full bg-red-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#3b82f6')" class="w-9 h-9 rounded-full bg-blue-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#10b981')" class="w-9 h-9 rounded-full bg-emerald-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#eab308')" class="w-9 h-9 rounded-full bg-yellow-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#a855f7')" class="w-9 h-9 rounded-full bg-purple-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#ec4899')" class="w-9 h-9 rounded-full bg-pink-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#f97316')" class="w-9 h-9 rounded-full bg-orange-500 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#38bdf8')" class="w-9 h-9 rounded-full bg-sky-400 border-2 border-white shadow transform hover:scale-110 active:scale-95"></button>
+                    <button onclick="selectColor('#ffffff')" class="w-9 h-9 rounded-full bg-white border-2 border-gray-400 shadow transform hover:scale-110 active:scale-95" title="Borrador"></button>
+                </div>
+
+                <!-- Lienzo SVG interactivo -->
+                <div class="flex justify-center items-center p-4 bg-slate-50 rounded-2xl border-2 border-pink-200 h-[320px]">
+                    <!-- Canvas PC -->
+                    <svg id="svg-computer" viewBox="0 0 400 300" class="max-h-full max-w-full">
+                        <rect id="color-monitor" onclick="paintPart('color-monitor')" x="100" y="30" width="200" height="140" rx="15" fill="#e2e8f0" stroke="#334155" stroke-width="8" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-screen" onclick="paintPart('color-screen')" x="115" y="45" width="170" height="110" rx="8" fill="#ffffff" stroke="#475569" stroke-width="4" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-stand" onclick="paintPart('color-stand')" x="180" y="170" width="40" height="30" fill="#cbd5e1" stroke="#334155" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                        <ellipse id="color-base" onclick="paintPart('color-base')" cx="200" cy="205" rx="60" ry="12" fill="#94a3b8" stroke="#334155" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-keyboard" onclick="paintPart('color-keyboard')" x="80" y="225" width="180" height="35" rx="6" fill="#e2e8f0" stroke="#334155" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                        <ellipse id="color-mouse" onclick="paintPart('color-mouse')" cx="300" cy="240" rx="20" ry="25" fill="#e2e8f0" stroke="#334155" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                    </svg>
+
+                    <!-- Canvas Laptop -->
+                    <svg id="svg-laptop" viewBox="0 0 400 300" class="max-h-full max-w-full hidden">
+                        <rect id="color-lap-screen-border" onclick="paintPart('color-lap-screen-border')" x="80" y="40" width="240" height="150" rx="12" fill="#e2e8f0" stroke="#1e293b" stroke-width="8" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-lap-screen" onclick="paintPart('color-lap-screen')" x="95" y="55" width="210" height="120" rx="6" fill="#ffffff" stroke="#475569" stroke-width="4" class="cursor-pointer hover:opacity-80 transition"/>
+                        <polygon id="color-lap-base" onclick="paintPart('color-lap-base')" points="50,240 350,240 320,190 80,190" fill="#cbd5e1" stroke="#1e293b" stroke-width="8" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-lap-trackpad" onclick="paintPart('color-lap-trackpad')" x="170" y="205" width="60" height="30" rx="4" fill="#ffffff" stroke="#475569" stroke-width="4" class="cursor-pointer hover:opacity-80 transition"/>
+                    </svg>
+
+                    <!-- Canvas Robot -->
+                    <svg id="svg-robot" viewBox="0 0 400 300" class="max-h-full max-w-full hidden">
+                        <rect id="color-rob-head" onclick="paintPart('color-rob-head')" x="140" y="30" width="120" height="90" rx="15" fill="#e2e8f0" stroke="#0f172a" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                        <circle id="color-rob-eye1" onclick="paintPart('color-rob-eye1')" cx="175" cy="65" r="15" fill="#ffffff" stroke="#0f172a" stroke-width="4" class="cursor-pointer hover:opacity-80 transition"/>
+                        <circle id="color-rob-eye2" onclick="paintPart('color-rob-eye2')" cx="225" cy="65" r="15" fill="#ffffff" stroke="#0f172a" stroke-width="4" class="cursor-pointer hover:opacity-80 transition"/>
+                        <rect id="color-rob-body" onclick="paintPart('color-rob-body')" x="120" y="130" width="160" height="130" rx="20" fill="#cbd5e1" stroke="#0f172a" stroke-width="6" class="cursor-pointer hover:opacity-80 transition"/>
+                        <circle id="color-rob-button" onclick="paintPart('color-rob-button')" cx="200" cy="195" r="25" fill="#ffffff" stroke="#0f172a" stroke-width="5" class="cursor-pointer hover:opacity-80 transition"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. JUEGO DE MEMORIA DE ACCESORIOS -->
+        <div id="game-memory" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-purple-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-purple-900 font-black text-lg sm:text-xl block">🃏 MEMORIA MÁGICA DE PARTES</span>
+                    <span class="text-sm text-purple-700 font-bold">Encuentra las parejas volteando las cartas</span>
+                </div>
+                <div class="bg-purple-100 px-4 py-2 rounded-xl text-purple-900 font-black text-base border-2 border-purple-300">
+                    Parejas: <span id="memory-score" class="font-black text-purple-700 text-2xl">0</span>/4
+                </div>
+            </div>
+
+            <div id="memory-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/90 p-6 rounded-3xl shadow-2xl border-4 border-purple-300 max-w-3xl mx-auto">
+            </div>
+        </div>
+
+        <!-- 6. JUEGO TRIVIA CON DIBUJOS -->
+        <div id="game-trivia" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-emerald-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-emerald-900 font-black text-lg sm:text-xl block">❓ DESAFÍO VISUAL</span>
+                    <span class="text-sm text-emerald-700 font-bold">Pregunta <span id="trivia-current">1</span> de 4</span>
+                </div>
+                <button onclick="speakCurrentQuestion()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 shadow">
+                    🔊 Repetir
+                </button>
+            </div>
+
+            <div class="bg-white/95 rounded-3xl p-6 shadow-2xl border-4 border-emerald-300 max-w-2xl mx-auto text-center space-y-6">
+                <div class="bg-gradient-to-r from-emerald-100 to-teal-100 p-5 rounded-3xl border-4 border-emerald-200">
+                    <h3 id="trivia-question" class="text-2xl sm:text-3xl font-black text-emerald-950">
+                        ¿Cargando pregunta...?
+                    </h3>
+                </div>
+
+                <div id="trivia-options" class="grid grid-cols-2 gap-4">
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. JUEGO MECANOGRAFÍA DE TEXTOS LARGOS -->
+        <div id="game-long-typing" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-blue-500 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-blue-900 font-black text-lg sm:text-xl block">📜 PRÁCTICA DE TEXTO LARGO</span>
+                    <span class="text-sm text-blue-700 font-bold">Lee la oración y escríbela exactamente igual abajo</span>
+                </div>
+                <button onclick="nextLongTextSentence()" class="bg-yellow-400 hover:bg-yellow-300 text-yellow-950 font-black px-3 py-1.5 rounded-xl text-sm shadow">
+                    ➡️ Siguiente Texto
+                </button>
+            </div>
+
+            <div class="bg-white/95 rounded-3xl p-6 shadow-2xl border-4 border-blue-300 max-w-3xl mx-auto space-y-6">
+                <!-- Texto objetivo -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-3xl border-4 border-blue-200 text-center space-y-2">
+                    <span class="text-xs font-black text-blue-600 uppercase tracking-wider block">Oración a escribir:</span>
+                    <p id="long-text-target" class="text-2xl sm:text-3xl font-black text-blue-950 leading-relaxed select-none">
+                        La computadora es mi amiga para aprender.
+                    </p>
+                    <button onclick="speakLongTextPrompt()" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold px-4 py-1.5 rounded-xl text-xs inline-flex items-center gap-1 shadow">
+                        <span>🔊 Escuchar texto</span>
+                    </button>
+                </div>
+
+                <!-- Campo de escritura -->
+                <div class="space-y-3">
+                    <label class="text-sm font-black text-gray-700 block text-center">Escribe aquí con tu teclado:</label>
+                    <textarea id="long-text-input" oninput="checkLongTextInput()" rows="3" placeholder="Empieza a escribir la oración aquí..." class="w-full p-4 border-4 border-purple-300 rounded-2xl text-xl sm:text-2xl font-bold text-gray-800 focus:border-purple-500 focus:outline-none transition shadow-inner resize-none"></textarea>
+                </div>
+
+                <!-- Barra de progreso -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-black text-gray-600">
+                        <span>Progreso de la oración:</span>
+                        <span id="long-text-percentage">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-6 rounded-full overflow-hidden border-2 border-gray-300">
+                        <div id="long-text-progress-bar" class="bg-gradient-to-r from-emerald-400 to-green-600 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Contador de oraciones completadas -->
+                <div class="text-center bg-yellow-100 p-3 rounded-2xl border-2 border-yellow-300">
+                    <span class="text-yellow-900 font-black text-sm">
+                        Oraciones completadas: <span id="long-text-count" class="text-2xl text-yellow-700 font-black">0</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. NUEVO JUEGO: SOPA DE LETRAS COMPUTACIONAL -->
+        <div id="game-wordsearch" class="hidden space-y-4 py-2">
+            <div class="flex flex-wrap justify-between items-center bg-white/95 p-3 rounded-2xl shadow border-4 border-fuchsia-400 gap-2">
+                <button onclick="showMainMenu()" class="bg-red-500 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl transition text-base">
+                    <span>🏠 Menú</span>
+                </button>
+                <div class="text-center flex-1">
+                    <span class="text-fuchsia-900 font-black text-lg sm:text-xl block">🔤 SOPA DE LETRAS COMPUTACIONAL</span>
+                    <span class="text-sm text-fuchsia-700 font-bold">Toca las letras ordenadamente para armar cada palabra</span>
+                </div>
+                <div class="bg-fuchsia-100 px-4 py-2 rounded-xl text-fuchsia-900 font-black text-base border-2 border-fuchsia-300">
+                    Encontradas: <span id="wordsearch-found-count" class="font-black text-fuchsia-700 text-2xl">0</span> / 4
+                </div>
+            </div>
+
+            <div class="bg-white/95 rounded-3xl p-4 sm:p-6 shadow-2xl border-4 border-fuchsia-300 max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                <!-- Palabras a buscar -->
+                <div class="md:col-span-5 bg-fuchsia-50 p-4 rounded-2xl border-4 border-fuchsia-200 flex flex-col gap-3">
+                    <h3 class="font-black text-fuchsia-900 text-center text-sm uppercase">Palabras a encontrar:</h3>
+                    <div id="wordsearch-targets" class="grid grid-cols-2 md:grid-cols-1 gap-2">
+                    </div>
+                </div>
+
+                <!-- Tablero de letras -->
+                <div class="md:col-span-7 flex flex-col items-center justify-center">
+                    <div id="wordsearch-grid" class="grid grid-cols-6 gap-1.5 p-3 bg-fuchsia-100 rounded-3xl border-4 border-fuchsia-300 shadow-inner">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE RECOMPENSA FRACTAL -->
+        <div id="modal-reward" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl border-8 border-yellow-400 p-6 sm:p-8 max-w-md w-full text-center space-y-5 shadow-2xl transform-none">
+                <div class="text-7xl text-yellow-400">⭐🏆⭐</div>
+                <h3 class="text-3xl font-black text-purple-800">¡SÚPER BIEN! 🎉</h3>
+                <p id="modal-reward-text" class="text-gray-800 font-black text-xl">¡Ganaste muchas estrellas!</p>
+                <div class="bg-yellow-100 p-4 rounded-3xl border-4 border-yellow-300 inline-block">
+                    <span class="text-yellow-950 font-black text-2xl" id="modal-stars-earned">+20 Estrellas</span>
+                </div>
+                <div class="space-y-2">
+                    <button onclick="repeatCurrentGame()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-black text-xl py-3 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                        <span>🔄 Jugar Otra Vez</span>
+                    </button>
+                    <button onclick="closeRewardModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xl py-3 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                        <span>🏠 Volver al Menú</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- PIE DE PÁGINA INSTITUCIONAL -->
+    <footer class="bg-purple-950 text-white text-center p-3 text-xs sm:text-sm border-t-4 border-yellow-400 mt-auto">
+        <p class="font-bold">
+            Escuela Parroquial "Jesús, Horizonte y Camino" | Educación Primaria
+        </p>
+        <p class="text-purple-300 text-xs mt-0.5">
+            Mundo Computación • <span class="text-yellow-300 font-bold">Profesora Esthefany Medina</span>
+        </p>
+    </footer>
+
+    <!-- LÓGICA DE JUEGOS Y TEMPORIZADORES -->
+    <script>
+        var totalStars = 0;
+        var audioEnabled = true;
+        var currentGameType = '';
+
+        function toggleAudioHint() {
+            audioEnabled = !audioEnabled;
+            var btn = document.getElementById('btn-audio-toggle');
+            var icon = document.getElementById('audio-icon');
+            if (audioEnabled) {
+                btn.className = "bg-pink-500 hover:bg-pink-600 text-white font-bold px-3 py-2 rounded-2xl shadow transition flex items-center gap-1 text-sm";
+                icon.innerText = "🔊";
+                speakText("Voz activada");
+            } else {
+                btn.className = "bg-gray-400 hover:bg-gray-500 text-white font-bold px-3 py-2 rounded-2xl shadow transition flex items-center gap-1 text-sm";
+                icon.innerText = "🔇";
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function addStars(amount) {
+            totalStars += amount;
+            document.getElementById('total-stars').innerText = totalStars;
+            try {
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                }
+            } catch(e) {}
+        }
+
+        function speakText(text) {
+            if (audioEnabled && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                var utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                utterance.rate = 0.95;
+                utterance.pitch = 1.1;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function clearAllIntervals() {
+            if (mouseTimerInterval) clearInterval(mouseTimerInterval);
+            if (mouseSpawnInterval) clearInterval(mouseSpawnInterval);
+            if (typingTimerInterval) clearInterval(typingTimerInterval);
+        }
+
+        function showMainMenu() {
+            clearAllIntervals();
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) {
+                divs[i].classList.add('hidden');
+            }
+            document.getElementById('main-menu').classList.remove('hidden');
+            speakText("¡Hola! Selecciona el juego que quieras jugar.");
+        }
+
+        function showRewardModal(message, starsEarned) {
+            clearAllIntervals();
+            addStars(starsEarned);
+            document.getElementById('modal-reward-text').innerText = message;
+            document.getElementById('modal-stars-earned').innerText = '+' + starsEarned + ' Estrellas 🌟';
+            document.getElementById('modal-reward').classList.remove('hidden');
+            speakText('¡Genial! Gran trabajo. Ganaste estrellas.');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('modal-reward').classList.add('hidden');
+            showMainMenu();
+        }
+
+        function repeatCurrentGame() {
+            document.getElementById('modal-reward').classList.add('hidden');
+            if (currentGameType === 'mouse') startMouseGame();
+            else if (currentGameType === 'dragAssembly') startDragAssemblyGame();
+            else if (currentGameType === 'speedTyping') startSpeedTypingGame();
+            else if (currentGameType === 'coloring') startColoringGame();
+            else if (currentGameType === 'memory') startMemoryGame();
+            else if (currentGameType === 'trivia') startTriviaGame();
+            else if (currentGameType === 'longTyping') startLongTypingGame();
+            else if (currentGameType === 'wordsearch') startWordSearchGame();
+            else showMainMenu();
+        }
+
+        // ==================== 1. JUEGO DEL RATÓN POR TIEMPO (1 MINUTO) ====================
+        var mouseScore = 0;
+        var mouseTimeLeft = 60;
+        var mouseTimerInterval = null;
+        var mouseSpawnInterval = null;
+        var mouseIcons = ['🎈', '🐭', '⭐', '🐸', '🐱', '🐤', '💻', '🎧'];
+
+        function startMouseGame() {
+            currentGameType = 'mouse';
+            clearAllIntervals();
+            
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-mouse').classList.remove('hidden');
+            
+            mouseScore = 0;
+            mouseTimeLeft = 60;
+            document.getElementById('mouse-score').innerText = mouseScore;
+            document.getElementById('mouse-timer').innerText = mouseTimeLeft;
+            
+            speakText("Tienes 1 minuto. ¡Haz clic en todos los dibujos que puedas!");
+            
+            spawnMouseTarget();
+            mouseSpawnInterval = setInterval(spawnMouseTarget, 1200);
+            
+            mouseTimerInterval = setInterval(function() {
+                mouseTimeLeft--;
+                document.getElementById('mouse-timer').innerText = mouseTimeLeft;
+                if (mouseTimeLeft <= 0) {
+                    clearAllIntervals();
+                    showRewardModal("¡Tiempo terminado! Lograste atrapar " + mouseScore + " objetos.", Math.max(10, mouseScore * 2));
+                }
+            }, 1000);
+        }
+
+        function spawnMouseTarget() {
+            var stage = document.getElementById('mouse-stage');
+            if (stage.children.length > 5) stage.firstChild.remove();
+            
+            var randomIcon = mouseIcons[Math.floor(Math.random() * mouseIcons.length)];
+            var posX = Math.floor(Math.random() * 75) + 5;
+            var posY = Math.floor(Math.random() * 65) + 5;
+            
+            var target = document.createElement('div');
+            target.className = "absolute cursor-pointer transition transform hover:scale-125 bg-white/90 border-4 border-teal-400 p-3 rounded-full shadow-2xl flex items-center justify-center floating-target";
+            target.style.left = posX + '%';
+            target.style.top = posY + '%';
+            target.innerHTML = '<span class="text-5xl select-none">' + randomIcon + '</span>';
+            
+            target.onclick = function() {
+                target.classList.add('pop-effect');
+                mouseScore++;
+                document.getElementById('mouse-score').innerText = mouseScore;
+                setTimeout(function() { target.remove(); }, 250);
+            };
+
+            stage.appendChild(target);
+        }
+
+        // ==================== 2. JUEGO ARRASTRAR Y ARMAR (DRAG & DROP) ====================
+        var dragParts = [
+            { id: 'monitor', name: 'Monitor / Pantalla', icon: '🖥️' },
+            { id: 'cpu', name: 'CPU / Cerebro', icon: '🎛️' },
+            { id: 'keyboard', name: 'Teclado', icon: '⌨️' },
+            { id: 'mouse', name: 'Ratón / Mouse', icon: '🖱️' }
+        ];
+        var dragScore = 0;
+
+        function startDragAssemblyGame() {
+            currentGameType = 'dragAssembly';
+            clearAllIntervals();
+            
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-drag-assembly').classList.remove('hidden');
+            
+            dragScore = 0;
+            document.getElementById('drag-score').innerText = 0;
+
+            var piecesContainer = document.getElementById('drag-pieces-container');
+            var targetsContainer = document.getElementById('drag-targets-container');
+
+            piecesContainer.innerHTML = '';
+            targetsContainer.innerHTML = '';
+
+            for (var i = 0; i < dragParts.length; i++) {
+                var part = dragParts[i];
+                piecesContainer.innerHTML += '<div id="drag-piece-' + part.id + '" draggable="true" ondragstart="handleDragStart(event, \'' + part.id + '\')" class="draggable-piece p-3 bg-white border-4 border-amber-400 rounded-2xl shadow-md text-center hover:bg-amber-100 transition transform hover:scale-105">' +
+                    '<span class="text-5xl block">' + part.icon + '</span><p class="text-xs font-black mt-1 text-gray-800">' + part.name + '</p></div>';
+
+                targetsContainer.innerHTML += '<div id="drag-target-' + part.id + '" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, \'' + part.id + '\')" class="border-4 border-dashed border-indigo-400 bg-white/80 rounded-2xl p-3 text-center min-h-[95px] flex flex-col justify-center items-center hover:bg-indigo-100 transition">' +
+                    '<span class="text-xs font-black text-indigo-800">Casita de: ' + part.name + '</span></div>';
+            }
+            
+            speakText("Arrastra cada pieza con el ratón hacia su lugar correspondiente.");
+        }
+
+        var draggedId = null;
+
+        function handleDragStart(e, id) {
+            draggedId = id;
+            e.dataTransfer.setData('text/plain', id);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetId) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            if (draggedId === targetId) {
+                var partObj = dragParts.find(function(x) { return x.id === targetId; });
+
+                var targetBox = document.getElementById('drag-target-' + targetId);
+                targetBox.className = "bg-emerald-500 text-white rounded-2xl p-3 text-center shadow-lg border-4 border-emerald-300 transform scale-105 transition";
+                targetBox.ondragover = null;
+                targetBox.ondrop = null;
+                targetBox.innerHTML = '<span class="text-5xl block">' + partObj.icon + '</span><p class="text-xs font-black mt-1 text-yellow-200">' + partObj.name + '</p>';
+
+                var pieceBox = document.getElementById('drag-piece-' + draggedId);
+                if (pieceBox) pieceBox.remove();
+
+                dragScore++;
+                document.getElementById('drag-score').innerText = dragScore;
+                speakText('¡Excelente! Colocaste ' + partObj.name);
+
+                if (dragScore === dragParts.length) {
+                    setTimeout(function() {
+                        showRewardModal('¡Súper! Armaste la computadora completa arrastrando las piezas.', 30);
+                    }, 500);
+                }
+            } else {
+                speakText('Esa pieza no va ahí, intenta en otra casita.');
+            }
+        }
+
+        // ==================== 3. CARRERA DE MECANOGRAFÍA POR TIEMPO ====================
+        var typingList = [
+            { key: 'A', icon: '🥑' }, { key: '1', icon: '1️⃣' }, { key: 'C', icon: '💻' },
+            { key: 'E', icon: '🐘' }, { key: '5', icon: '5️⃣' }, { key: 'M', icon: '🐭' },
+            { key: 'P', icon: '🍕' }, { key: '3', icon: '3️⃣' }, { key: 'O', icon: '🐻' },
+            { key: 'U', icon: '🍇' }, { key: 'R', icon: '🤖' }, { key: 'S', icon: '⭐' }
+        ];
+        var typingIndex = 0;
+        var typingScore = 0;
+        var typingTimeLeft = 60;
+        var typingTimerInterval = null;
+
+        function startSpeedTypingGame() {
+            currentGameType = 'speedTyping';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-speed-typing').classList.remove('hidden');
+
+            typingScore = 0;
+            typingTimeLeft = 60;
+            typingIndex = 0;
+            document.getElementById('typing-score').innerText = typingScore;
+            document.getElementById('typing-timer').innerText = typingTimeLeft;
+
+            updateTypingPrompt();
+
+            window.onkeydown = function(e) {
+                var tpGame = document.getElementById('game-speed-typing');
+                if (!tpGame || tpGame.classList.contains('hidden')) return;
+                if (e && e.key) {
+                    pressTypingKey(e.key.toUpperCase());
+                }
+            };
+
+            typingTimerInterval = setInterval(function() {
+                typingTimeLeft--;
+                document.getElementById('typing-timer').innerText = typingTimeLeft;
+                if (typingTimeLeft <= 0) {
+                    clearAllIntervals();
+                    window.onkeydown = null;
+                    showRewardModal("¡Tiempo! Escribiste " + typingScore + " teclas correctamente.", Math.max(15, typingScore * 3));
+                }
+            }, 1000);
+        }
+
+        function updateTypingPrompt() {
+            var current = typingList[typingIndex % typingList.length];
+            document.getElementById('typing-target').innerText = current.key;
+            document.getElementById('typing-icon').innerText = current.icon;
+            speakText('Presiona la tecla ' + current.key);
+        }
+
+        function pressTypingKey(key) {
+            var currentReq = typingList[typingIndex % typingList.length].key;
+            var btn = document.getElementById('tp-key-' + key);
+            if (btn) {
+                btn.classList.add('key-pressed');
+                setTimeout(function() { btn.classList.remove('key-pressed'); }, 200);
+            }
+
+            if (key === currentReq) {
+                typingScore++;
+                typingIndex++;
+                document.getElementById('typing-score').innerText = typingScore;
+                updateTypingPrompt();
+            }
+        }
+
+        // ==================== 4. JUEGO DE PINTAR LA COMPUTADORA ====================
+        var currentColor = '#3b82f6';
+
+        function startColoringGame() {
+            currentGameType = 'coloring';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-coloring').classList.remove('hidden');
+
+            switchColoringImage('pc');
+            speakText("Selecciona una imagen y pinta cada una de sus partes.");
+        }
+
+        function switchColoringImage(imgType) {
+            document.getElementById('svg-computer').classList.add('hidden');
+            document.getElementById('svg-laptop').classList.add('hidden');
+            document.getElementById('svg-robot').classList.add('hidden');
+
+            document.getElementById('btn-draw-pc').className = "bg-white text-pink-900 font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+            document.getElementById('btn-draw-laptop').className = "bg-white text-pink-900 font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+            document.getElementById('btn-draw-robot').className = "bg-white text-pink-900 font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+
+            if (imgType === 'pc') {
+                document.getElementById('svg-computer').classList.remove('hidden');
+                document.getElementById('btn-draw-pc').className = "bg-pink-500 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+            } else if (imgType === 'laptop') {
+                document.getElementById('svg-laptop').classList.remove('hidden');
+                document.getElementById('btn-draw-laptop').className = "bg-pink-500 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+            } else if (imgType === 'robot') {
+                document.getElementById('svg-robot').classList.remove('hidden');
+                document.getElementById('btn-draw-robot').className = "bg-pink-500 text-white font-black px-3 py-1.5 rounded-xl text-xs sm:text-sm shadow flex items-center gap-1";
+            }
+        }
+
+        function selectColor(colorHex) {
+            currentColor = colorHex;
+        }
+
+        function paintPart(partId) {
+            var el = document.getElementById(partId);
+            if (el) {
+                el.setAttribute('fill', currentColor);
+            }
+        }
+
+        function finishColoring() {
+            showRewardModal("¡Qué hermoso dibujo diseñaste!", 25);
+        }
+
+        // ==================== 5. JUEGO DE MEMORIA ====================
+        var memoryItems = [
+            { icon: '🖥️', name: 'Monitor' },
+            { icon: '⌨️', name: 'Teclado' },
+            { icon: '🖱️', name: 'Ratón' },
+            { icon: '🎧', name: 'Audífonos' }
+        ];
+        var memoryCards = [];
+        var flippedCards = [];
+        var matchedCount = 0;
+
+        function startMemoryGame() {
+            currentGameType = 'memory';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-memory').classList.remove('hidden');
+
+            matchedCount = 0;
+            flippedCards = [];
+            document.getElementById('memory-score').innerText = 0;
+
+            // Duplica y mezcla tarjetas
+            var deck = memoryItems.concat(memoryItems);
+            deck.sort(function() { return 0.5 - Math.random(); });
+
+            var grid = document.getElementById('memory-grid');
+            grid.innerHTML = '';
+
+            for (var i = 0; i < deck.length; i++) {
+                var card = deck[i];
+                grid.innerHTML += '<div class="memory-card h-28 cursor-pointer" onclick="flipMemoryCard(this, \'' + card.name + '\')">' +
+                    '<div class="memory-card-inner relative w-full h-full rounded-2xl shadow-lg border-4 border-purple-300">' +
+                        '<div class="memory-card-front absolute inset-0 bg-purple-600 rounded-2xl flex items-center justify-center text-4xl text-white font-black">❓</div>' +
+                        '<div class="memory-card-back absolute inset-0 bg-yellow-300 rounded-2xl flex flex-col items-center justify-center p-2 text-center border-2 border-yellow-500">' +
+                            '<span class="text-4xl">' + card.icon + '</span>' +
+                            '<span class="text-xs font-black text-amber-950 mt-1">' + card.name + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            speakText("Encuentra las parejas de cartas iguales.");
+        }
+
+        function flipMemoryCard(cardEl, cardName) {
+            if (cardEl.classList.contains('flipped') || flippedCards.length >= 2) return;
+
+            cardEl.classList.add('flipped');
+            flippedCards.push({ element: cardEl, name: cardName });
+
+            if (flippedCards.length === 2) {
+                if (flippedCards[0].name === flippedCards[1].name) {
+                    matchedCount++;
+                    document.getElementById('memory-score').innerText = matchedCount;
+                    speakText('¡Pareja encontrada!');
+                    flippedCards = [];
+
+                    if (matchedCount === memoryItems.length) {
+                        setTimeout(function() {
+                            showRewardModal("¡Excelente memoria! Encontraste todas las parejas.", 30);
+                        }, 600);
+                    }
+                } else {
+                    setTimeout(function() {
+                        flippedCards[0].element.classList.remove('flipped');
+                        flippedCards[1].element.classList.remove('flipped');
+                        flippedCards = [];
+                    }, 1000);
+                }
+            }
+        }
+
+        // ==================== 6. TRIVIA VISUAL ====================
+        var triviaQuestions = [
+            {
+                q: '¿Cuál de estos es el Monitor o Pantalla?',
+                options: [ { icon: '🖥️', name: 'Monitor' }, { icon: '🖱️', name: 'Ratón' }, { icon: '⌨️', name: 'Teclado' }, { icon: '🖨️', name: 'Impresora' } ],
+                answer: 0
+            },
+            {
+                q: '¿Cuál es el Cerebro o CPU de la computadora?',
+                options: [ { icon: '🎧', name: 'Audífonos' }, { icon: '🎛️', name: 'CPU' }, { icon: '📷', name: 'Cámara' }, { icon: '🖱️', name: 'Ratón' } ],
+                answer: 1
+            },
+            {
+                q: '¿Con cuál podemos hacer Clic y seleccionar cosas?',
+                options: [ { icon: '⌨️', name: 'Teclado' }, { icon: '🖥️', name: 'Monitor' }, { icon: '🖱️', name: 'Ratón (Mouse)' }, { icon: '🔊', name: 'Cornetas' } ],
+                answer: 2
+            },
+            {
+                q: '¿Cuál usas para presionar y escribir letras?',
+                options: [ { icon: '💾', name: 'Pendrive' }, { icon: '📷', name: 'Cámara' }, { icon: '🖨️', name: 'Impresora' }, { icon: '⌨️', name: 'Teclado' } ],
+                answer: 3
+            }
+        ];
+        var triviaIndex = 0;
+
+        function startTriviaGame() {
+            currentGameType = 'trivia';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-trivia').classList.remove('hidden');
+
+            triviaIndex = 0;
+            renderTriviaQuestion();
+        }
+
+        function renderTriviaQuestion() {
+            var qObj = triviaQuestions[triviaIndex];
+            document.getElementById('trivia-current').innerText = triviaIndex + 1;
+            document.getElementById('trivia-question').innerText = qObj.q;
+
+            var optsContainer = document.getElementById('trivia-options');
+            optsContainer.innerHTML = '';
+
+            for (var i = 0; i < qObj.options.length; i++) {
+                var opt = qObj.options[i];
+                optsContainer.innerHTML += '<button onclick="checkTriviaAnswer(' + i + ')" class="p-4 bg-red-50 border-4 border-red-200 hover:bg-red-200 rounded-3xl text-center shadow-lg transition flex flex-col items-center justify-center transform hover:scale-105">' +
+                    '<span class="text-6xl sm:text-7xl block mb-2">' + opt.icon + '</span>' +
+                    '<span class="text-lg font-black text-red-950">' + opt.name + '</span>' +
+                    '</button>';
+            }
+
+            speakCurrentQuestion();
+        }
+
+        function speakCurrentQuestion() {
+            var qObj = triviaQuestions[triviaIndex];
+            if (qObj) speakText(qObj.q);
+        }
+
+        function checkTriviaAnswer(selectedIndex) {
+            var qObj = triviaQuestions[triviaIndex];
+
+            if (selectedIndex === qObj.answer) {
+                speakText('¡Respuesta Correcta!');
+                triviaIndex++;
+
+                if (triviaIndex < triviaQuestions.length) {
+                    setTimeout(renderTriviaQuestion, 1200);
+                } else {
+                    setTimeout(function() {
+                        showRewardModal('¡Ganaste la Trivia de Dibujos!', 35);
+                    }, 600);
+                }
+            } else {
+                speakText('Intenta de nuevo, tú puedes');
+            }
+        }
+
+        // ==================== 7. MECANOGRAFÍA DE TEXTO LARGO ====================
+        var longTextSentences = [
+            "La computadora es mi amiga para aprender.",
+            "El teclado sirve para escribir palabras y numeros.",
+            "El raton nos ayuda a hacer clic en la pantalla.",
+            "En la Escuela Jesus Horizonte y Camino aprendemos computacion con alegria."
+        ];
+        var longTextIndex = 0;
+        var longTextCompletedCount = 0;
+
+        function startLongTypingGame() {
+            currentGameType = 'longTyping';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-long-typing').classList.remove('hidden');
+
+            longTextIndex = 0;
+            longTextCompletedCount = 0;
+            document.getElementById('long-text-count').innerText = 0;
+
+            loadLongTextSentence();
+            speakText("Practica mecanografía escribiendo el texto completo.");
+        }
+
+        function loadLongTextSentence() {
+            var targetText = longTextSentences[longTextIndex % longTextSentences.length];
+            document.getElementById('long-text-target').innerText = targetText;
+            var inputArea = document.getElementById('long-text-input');
+            inputArea.value = '';
+            inputArea.classList.remove('border-emerald-500', 'bg-emerald-50');
+            inputArea.classList.add('border-purple-300');
+            
+            document.getElementById('long-text-progress-bar').style.width = '0%';
+            document.getElementById('long-text-percentage').innerText = '0%';
+        }
+
+        function speakLongTextPrompt() {
+            var targetText = longTextSentences[longTextIndex % longTextSentences.length];
+            speakText(targetText);
+        }
+
+        function nextLongTextSentence() {
+            longTextIndex++;
+            loadLongTextSentence();
+        }
+
+        function checkLongTextInput() {
+            var targetText = longTextSentences[longTextIndex % longTextSentences.length];
+            var userText = document.getElementById('long-text-input').value;
+
+            var correctChars = 0;
+            for (var i = 0; i < userText.length; i++) {
+                if (i < targetText.length && userText[i] === targetText[i]) {
+                    correctChars++;
+                }
+            }
+
+            var progress = Math.min(100, Math.round((userText.length / targetText.length) * 100));
+            document.getElementById('long-text-progress-bar').style.width = progress + '%';
+            document.getElementById('long-text-percentage').innerText = progress + '%';
+
+            if (userText === targetText) {
+                var inputArea = document.getElementById('long-text-input');
+                inputArea.classList.remove('border-purple-300');
+                inputArea.classList.add('border-emerald-500', 'bg-emerald-50');
+
+                longTextCompletedCount++;
+                document.getElementById('long-text-count').innerText = longTextCompletedCount;
+                speakText('¡Excelente! Texto escrito perfectamente.');
+
+                setTimeout(function() {
+                    longTextIndex++;
+                    if (longTextIndex < longTextSentences.length) {
+                        loadLongTextSentence();
+                    } else {
+                        showRewardModal('¡Felicidades! Completaste la práctica de textos largos.', 40);
+                    }
+                }, 1200);
+            }
+        }
+
+        // ==================== 8. SOPA DE LETRAS COMPUTACIONAL ====================
+        var wordSearchTargets = [
+            { word: 'RATON', icon: '🖱️', found: false },
+            { word: 'TECLA', icon: '⌨️', found: false },
+            { word: 'PC', icon: '🖥️', found: false },
+            { word: 'CPU', icon: '🎛️', found: false }
+        ];
+
+        var wordSearchGridData = [
+            ['R', 'A', 'T', 'O', 'N', 'X'],
+            ['T', 'E', 'C', 'L', 'A', 'Y'],
+            ['P', 'C', 'A', 'B', 'C', 'Z'],
+            ['C', 'P', 'U', 'D', 'E', 'F'],
+            ['G', 'H', 'I', 'J', 'K', 'L'],
+            ['M', 'N', 'O', 'P', 'Q', 'R']
+        ];
+
+        var selectedLetters = [];
+
+        function startWordSearchGame() {
+            currentGameType = 'wordsearch';
+            clearAllIntervals();
+
+            var divs = document.querySelectorAll('main > div');
+            for (var i = 0; i < divs.length; i++) divs[i].classList.add('hidden');
+            document.getElementById('game-wordsearch').classList.remove('hidden');
+
+            wordSearchTargets.forEach(function(item) { item.found = false; });
+            selectedLetters = [];
+
+            renderWordSearchList();
+            renderWordSearchGrid();
+            speakText("Sopa de letras. Encuentra las palabras tocando cada letra.");
+        }
+
+        function renderWordSearchList() {
+            var container = document.getElementById('wordsearch-targets');
+            container.innerHTML = '';
+            var foundCount = 0;
+
+            wordSearchTargets.forEach(function(item) {
+                if (item.found) foundCount++;
+                var badgeClass = item.found ? "bg-emerald-500 text-white line-through" : "bg-white text-fuchsia-950 border-2 border-fuchsia-300";
+                container.innerHTML += '<div class="p-3 rounded-xl font-black text-center shadow flex items-center justify-between ' + badgeClass + '">' +
+                    '<span>' + item.icon + ' ' + item.word + '</span>' +
+                    '<span>' + (item.found ? '✅' : '🔍') + '</span></div>';
+            });
+
+            document.getElementById('wordsearch-found-count').innerText = foundCount;
+
+            if (foundCount === wordSearchTargets.length) {
+                setTimeout(function() {
+                    showRewardModal("¡Súper detective! Encontraste todas las palabras en la Sopa de Letras.", 35);
+                }, 600);
+            }
+        }
+
+        function renderWordSearchGrid() {
+            var gridEl = document.getElementById('wordsearch-grid');
+            gridEl.innerHTML = '';
+
+            for (var r = 0; r < wordSearchGridData.length; r++) {
+                for (var c = 0; c < wordSearchGridData[r].length; c++) {
+                    var letter = wordSearchGridData[r][c];
+                    gridEl.innerHTML += '<button id="ws-cell-' + r + '-' + c + '" onclick="clickWordSearchCell(' + r + ', ' + c + ', \'' + letter + '\')" class="w-10 h-10 sm:w-12 sm:h-12 bg-white hover:bg-yellow-200 border-2 border-fuchsia-300 font-black text-lg sm:text-xl rounded-xl shadow flex items-center justify-center text-fuchsia-900 active:scale-95 transition">' +
+                        letter + '</button>';
+                }
+            }
+        }
+
+        function clickWordSearchCell(r, c, letter) {
+            var btn = document.getElementById('ws-cell-' + r + '-' + c);
+            btn.classList.add('bg-yellow-300', 'text-amber-950', 'border-yellow-500');
+
+            selectedLetters.push({ letter: letter, cellId: 'ws-cell-' + r + '-' + c });
+            var currentConstructed = selectedLetters.map(function(item) { return item.letter; }).join('');
+
+            var matched = wordSearchTargets.find(function(item) { return item.word === currentConstructed && !item.found; });
+
+            if (matched) {
+                matched.found = true;
+                speakText('¡Encontraste ' + matched.word + '!');
+
+                selectedLetters.forEach(function(item) {
+                    var cell = document.getElementById(item.cellId);
+                    if (cell) {
+                        cell.className = "w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500 text-white font-black text-lg sm:text-xl rounded-xl shadow flex items-center justify-center border-2 border-emerald-300";
+                    }
+                });
+
+                selectedLetters = [];
+                renderWordSearchList();
+            } else {
+                var isPrefix = wordSearchTargets.some(function(item) { return !item.found && item.word.startsWith(currentConstructed); });
+
+                if (!isPrefix) {
+                    setTimeout(function() {
+                        selectedLetters.forEach(function(item) {
+                            var cell = document.getElementById(item.cellId);
+                            if (cell && !cell.classList.contains('bg-emerald-500')) {
+                                cell.className = "w-10 h-10 sm:w-12 sm:h-12 bg-white hover:bg-yellow-200 border-2 border-fuchsia-300 font-black text-lg sm:text-xl rounded-xl shadow flex items-center justify-center text-fuchsia-900";
+                            }
+                        });
+                        selectedLetters = [];
+                    }, 400);
+                }
+            }
+        }
+
+        window.onload = function() {
+            showMainMenu();
+        };
+    </script>
+</body>
+</html>
